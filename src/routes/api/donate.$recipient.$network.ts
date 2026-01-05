@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { env } from "@/env";
 
 // x402 v2 payment requirements format
 interface PaymentRequirement {
@@ -36,6 +37,20 @@ const NETWORK_CONFIG: Record<
 		chainIdCAIP: "eip155:8453",
 		asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC on Base
 		name: "Base",
+		eip712: { name: "USD Coin", version: "2" },
+	},
+	sepolia: {
+		chainId: 11155111,
+		chainIdCAIP: "eip155:11155111",
+		asset: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", // USDC on Sepolia
+		name: "Sepolia",
+		eip712: { name: "USDC", version: "2" },
+	},
+	mainnet: {
+		chainId: 1,
+		chainIdCAIP: "eip155:1",
+		asset: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC on Ethereum
+		name: "Ethereum",
 		eip712: { name: "USD Coin", version: "2" },
 	},
 };
@@ -142,31 +157,44 @@ export const Route = createFileRoute("/api/donate/$recipient/$network")({
 				return createPaymentRequiredResponse(paymentRequirements);
 			},
 
-			// POST handles the payment verification and success
+			// POST handles the payment verification and settlement
 			POST: async ({ request, params }) => {
 				const { recipient, network } = params;
+				const url = new URL(request.url);
+				const amountCents = Number.parseInt(
+					url.searchParams.get("amount") || "100",
+					10,
+				);
 
-				// Check for payment header (x402 payment proof)
-				// v2 uses PAYMENT-SIGNATURE, v1 uses X-Payment
+				// Log all headers for debugging
+				console.log("=== Incoming POST request ===");
+				console.log("URL:", request.url);
+				console.log("Params:", { recipient, network, amountCents });
+				console.log("Headers:");
+				for (const [key, value] of request.headers.entries()) {
+					console.log(`  ${key}: ${value.substring(0, 100)}${value.length > 100 ? "..." : ""}`);
+				}
+
+				// Validate network
+				if (!NETWORK_CONFIG[network]) {
+					return Response.json(
+						{ error: "Unsupported network" },
+						{ status: 400 },
+					);
+				}
+
+				// Check for payment header (x402 v2 uses PAYMENT-SIGNATURE, v1 uses X-PAYMENT)
 				const paymentHeader =
 					request.headers.get("PAYMENT-SIGNATURE") ||
-					request.headers.get("X-Payment");
+					request.headers.get("payment-signature") ||
+					request.headers.get("X-PAYMENT") ||
+					request.headers.get("x-payment");
+
+				console.log("Payment header found:", paymentHeader ? "YES" : "NO");
 
 				if (!paymentHeader) {
 					// No payment provided, return 402
-					const url = new URL(request.url);
-					const amountCents = Number.parseInt(
-						url.searchParams.get("amount") || "100",
-						10,
-					);
-
-					if (!NETWORK_CONFIG[network]) {
-						return Response.json(
-							{ error: "Unsupported network" },
-							{ status: 400 },
-						);
-					}
-
+					console.log("No payment header, returning 402");
 					const paymentRequirements = buildPaymentRequirements(
 						recipient,
 						network,
@@ -176,45 +204,125 @@ export const Route = createFileRoute("/api/donate/$recipient/$network")({
 					return createPaymentRequiredResponse(paymentRequirements);
 				}
 
-				// Payment header exists - in a full implementation, you would:
-				// 1. Verify the payment with the facilitator
-				// 2. Check that the payment matches the requirements
-				// For this POC, we'll trust that the x402 client handled it correctly
-
 				try {
-					// Parse the payment to get transaction details
-					// v2 format is base64 encoded, try to decode first
-					let payment: Record<string, unknown>;
-					try {
-						// Try base64 decode first (v2 format)
-						const decoded = atob(paymentHeader);
-						payment = JSON.parse(decoded);
-					} catch {
-						// Fall back to direct JSON parse (v1 format)
-						payment = JSON.parse(paymentHeader);
-					}
+					// Parse the payment payload from the header (base64 encoded)
+					console.log("Decoding payment header...");
+					const paymentPayload = JSON.parse(atob(paymentHeader));
 
-					console.log("Donation received!", {
+					console.log("Received payment payload:", JSON.stringify(paymentPayload, null, 2));
+
+					// Build payment requirements (must match what was sent in 402)
+					const paymentRequirements = buildPaymentRequirements(
 						recipient,
 						network,
-						payment,
+						amountCents,
+						request.url,
+					);
+
+					const facilitatorUrl = env.FACILITATOR_URL;
+					console.log("Using facilitator URL:", facilitatorUrl);
+
+					// Step 1: Verify the payment with the facilitator
+					const verifyRequestBody = {
+						x402Version: 2,
+						paymentPayload,
+						paymentRequirements: paymentRequirements[0],
+					};
+					console.log("=== Calling /verify ===");
+					console.log("Request body:", JSON.stringify(verifyRequestBody, null, 2));
+
+					const verifyResponse = await fetch(`${facilitatorUrl}/verify`, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify(verifyRequestBody),
 					});
 
-					// Return success response
+					console.log("Verify response status:", verifyResponse.status);
+
+					if (!verifyResponse.ok) {
+						const errorText = await verifyResponse.text();
+						console.error("Facilitator verify error:", errorText);
+						return Response.json(
+							{ error: "Payment verification failed", details: errorText },
+							{ status: 400 },
+						);
+					}
+
+					const verifyResult = await verifyResponse.json();
+					console.log("Verify result:", JSON.stringify(verifyResult, null, 2));
+
+					if (!verifyResult.isValid) {
+						console.error("Payment invalid:", verifyResult.invalidReason);
+						return Response.json(
+							{
+								error: "Invalid payment",
+								reason: verifyResult.invalidReason,
+							},
+							{ status: 400 },
+						);
+					}
+
+					console.log("Payment verified! Proceeding to settle...");
+
+					// Step 2: Settle the payment with the facilitator
+					const settleRequestBody = {
+						x402Version: 2,
+						paymentPayload,
+						paymentRequirements: paymentRequirements[0],
+					};
+					console.log("=== Calling /settle ===");
+					console.log("Request body:", JSON.stringify(settleRequestBody, null, 2));
+
+					const settleResponse = await fetch(`${facilitatorUrl}/settle`, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify(settleRequestBody),
+					});
+
+					console.log("Settle response status:", settleResponse.status);
+
+					if (!settleResponse.ok) {
+						const errorText = await settleResponse.text();
+						console.error("Facilitator settle error:", errorText);
+						return Response.json(
+							{ error: "Payment settlement failed", details: errorText },
+							{ status: 500 },
+						);
+					}
+
+					const settleResult = await settleResponse.json();
+					console.log("Settle result:", JSON.stringify(settleResult, null, 2));
+
+					if (!settleResult.success) {
+						console.error("Settlement failed:", settleResult.errorReason);
+						return Response.json(
+							{
+								error: "Settlement failed",
+								reason: settleResult.errorReason,
+							},
+							{ status: 500 },
+						);
+					}
+
+					console.log("=== Payment successful! ===");
+
+					// Return success response with transaction hash
 					return Response.json({
 						success: true,
 						message: "Thank you for your donation! ☕",
 						recipient,
 						network,
-						txHash:
-							payment.txHash ||
-							(payment.transaction as { hash?: string })?.hash,
+						txHash: settleResult.transaction,
 					});
 				} catch (err) {
-					console.error("Payment verification error:", err);
+					console.error("Payment processing error:", err);
 					return Response.json(
-						{ error: "Invalid payment format" },
-						{ status: 400 },
+						{ error: "Payment processing failed" },
+						{ status: 500 },
 					);
 				}
 			},

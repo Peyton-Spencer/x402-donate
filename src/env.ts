@@ -15,7 +15,6 @@ export const env = createEnv({
 
 	client: {
 		VITE_APP_TITLE: z.string().min(1).optional(),
-		VITE_FACILITATOR_URL: z.url().default("https://x402.org/facilitator"),
 	},
 
 	/**

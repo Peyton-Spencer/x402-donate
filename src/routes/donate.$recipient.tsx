@@ -33,7 +33,7 @@ export const Route = createFileRoute("/donate/$recipient")({
 
 const donationSchema = z.object({
 	amount: z.number().min(1, "Please select an amount"),
-	network: z.enum(["base-sepolia", "base"]),
+	network: z.enum(["base-sepolia", "base", "sepolia", "mainnet"]),
 	message: z.string().max(100),
 });
 
@@ -449,7 +449,15 @@ function DonationPageContent({
 							style={{ animationDelay: "450ms" }}
 						>
 							<a
-								href={`https://${finalNetwork === "base" ? "" : "sepolia."}basescan.org/tx/${txHash}`}
+								href={
+									finalNetwork === "mainnet"
+										? `https://etherscan.io/tx/${txHash}`
+										: finalNetwork === "sepolia"
+											? `https://sepolia.etherscan.io/tx/${txHash}`
+											: finalNetwork === "base"
+												? `https://basescan.org/tx/${txHash}`
+												: `https://sepolia.basescan.org/tx/${txHash}`
+								}
 								target="_blank"
 								rel="noopener noreferrer"
 								className="text-emerald-600 hover:text-emerald-500 underline"
