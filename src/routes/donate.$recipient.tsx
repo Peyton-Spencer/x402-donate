@@ -246,6 +246,13 @@ function DonationPageContent({
 	const [finalAmount, setFinalAmount] = useState<number>(0);
 	const [finalNetwork, setFinalNetwork] = useState<NetworkKey>("base-sepolia");
 
+	// Reset "connecting" status when wallet connects
+	useEffect(() => {
+		if (isConnected && status === "connecting") {
+			setStatus("idle");
+		}
+	}, [isConnected, status]);
+
 	// Create x402 client with wallet signer
 	const x402PaymentClient = useMemo(() => {
 		if (!walletClient) return null;
