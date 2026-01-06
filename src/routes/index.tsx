@@ -3,7 +3,35 @@ import { Coffee } from "lucide-react";
 import { env } from "@/env";
 import { useHomeForm } from "@/hooks/home-form";
 
-export const Route = createFileRoute("/")({ component: HomePage });
+export const Route = createFileRoute("/")({
+	component: HomePage,
+	head: () => ({
+		meta: [
+			{ title: "x402 Donate - Buy Someone a Coffee with Crypto" },
+			{
+				name: "description",
+				content: "Create donation links for any Ethereum address or ENS name. Fast, secure USDC payments powered by x402.",
+			},
+			// OpenGraph
+			{ property: "og:title", content: "x402 Donate - Buy Someone a Coffee with Crypto" },
+			{
+				property: "og:description",
+				content: "Create donation links for any Ethereum address or ENS name. Fast, secure USDC payments powered by x402.",
+			},
+			{ property: "og:image", content: "/og-image.svg" },
+			{ property: "og:url", content: "/" },
+			{ property: "og:type", content: "website" },
+			// Twitter
+			{ name: "twitter:title", content: "x402 Donate - Buy Someone a Coffee with Crypto" },
+			{
+				name: "twitter:description",
+				content: "Create donation links for any Ethereum address or ENS name. Fast, secure USDC payments powered by x402.",
+			},
+			{ name: "twitter:image", content: "/og-image.svg" },
+			{ name: "twitter:url", content: "/" },
+		],
+	}),
+});
 
 function HomePage() {
 	const navigate = useNavigate();

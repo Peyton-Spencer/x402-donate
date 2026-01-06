@@ -55,13 +55,83 @@ export const Route = createFileRoute("/donate/$recipient")({
 	search: {
 		middlewares: [stripSearchParams(searchDefaults)],
 	},
-	loader: ({ params: { recipient } }) => {
+	// Pass search params through loaderDeps for SSR head function access
+	loaderDeps: ({ search }) => ({
+		amount: search.amount,
+		network: search.network,
+	}),
+	loader: ({ params: { recipient }, deps }) => {
 		const isValidAddress = isAddress(recipient);
 		const isEns = isEnsName(recipient);
 		return {
 			recipient,
 			isValidAddress,
 			isEns,
+			amount: deps.amount,
+			network: deps.network,
+		};
+	},
+	head: ({ loaderData }) => {
+		const { recipient, isEns, amount, network } = loaderData ?? {
+			recipient: "",
+			isEns: false,
+			amount: searchDefaults.amount,
+			network: searchDefaults.network,
+		};
+
+		const displayName = isEns
+			? recipient
+			: `${recipient.slice(0, 6)}...${recipient.slice(-4)}`;
+
+		// Format amount from cents to dollars
+		const amountDollars = (amount / 100).toFixed(2);
+		const isDefaultAmount = amount === searchDefaults.amount;
+		const isDefaultNetwork = network === searchDefaults.network;
+
+		// Get network display name
+		const networkNames: Record<string, string> = {
+			base: "Base",
+			"base-sepolia": "Base Sepolia",
+			sepolia: "Sepolia",
+			mainnet: "Ethereum",
+		};
+		const networkName = networkNames[network] || "Base";
+
+		// Build dynamic title and description
+		const title = isDefaultAmount
+			? `Donate to ${displayName}`
+			: `Donate $${amountDollars} to ${displayName}`;
+
+		const descriptionParts = [`Buy ${displayName} a coffee with crypto via x402.`];
+		if (!isDefaultAmount) {
+			descriptionParts.push(`Suggested amount: $${amountDollars}.`);
+		}
+		descriptionParts.push(`Fast, secure USDC donations on ${networkName}.`);
+		const description = descriptionParts.join(" ");
+
+		// Build URL with search params if non-default
+		const searchParams = new URLSearchParams();
+		if (!isDefaultAmount) searchParams.set("amount", String(amount));
+		if (!isDefaultNetwork) searchParams.set("network", network);
+		const queryString = searchParams.toString();
+		const url = `/donate/${recipient}${queryString ? `?${queryString}` : ""}`;
+
+		return {
+			meta: [
+				{ title },
+				{ name: "description", content: description },
+				// OpenGraph
+				{ property: "og:title", content: title },
+				{ property: "og:description", content: description },
+				{ property: "og:image", content: "/og-image.svg" },
+				{ property: "og:url", content: url },
+				{ property: "og:type", content: "website" },
+				// Twitter
+				{ name: "twitter:title", content: title },
+				{ name: "twitter:description", content: description },
+				{ name: "twitter:image", content: "/og-image.svg" },
+				{ name: "twitter:url", content: url },
+			],
 		};
 	},
 });

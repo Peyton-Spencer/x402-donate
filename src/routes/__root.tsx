@@ -27,11 +27,38 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			{
 				title: "x402 Donate",
 			},
+			{
+				name: "description",
+				content: "Buy someone a coffee with crypto. Create donation links for any Ethereum address or ENS name.",
+			},
+			// OpenGraph base tags (can be overridden by child routes)
+			{
+				property: "og:site_name",
+				content: "x402 Donate",
+			},
+			{
+				property: "og:type",
+				content: "website",
+			},
+			// Twitter card base tags
+			{
+				name: "twitter:card",
+				content: "summary_large_image",
+			},
 		],
 		links: [
 			{
 				rel: "stylesheet",
 				href: appCss,
+			},
+			{
+				rel: "icon",
+				type: "image/svg+xml",
+				href: "/favicon.svg",
+			},
+			{
+				rel: "manifest",
+				href: "/manifest.json",
 			},
 		],
 	}),

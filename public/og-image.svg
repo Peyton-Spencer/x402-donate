@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <linearGradient id="coffee" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#ea580c"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- Decorative circles -->
+  <circle cx="100" cy="100" r="200" fill="#f59e0b" opacity="0.1"/>
+  <circle cx="1100" cy="530" r="250" fill="#ea580c" opacity="0.1"/>
+  <!-- Coffee icon -->
+  <g transform="translate(450, 150)">
+    <rect width="120" height="120" rx="24" fill="url(#coffee)" transform="rotate(3 60 60)"/>
+    <g fill="white" transform="translate(20, 30)">
+      <path d="M10 30h50v35c0 8-8 15-15 15h-20c-8 0-15-7-15-15V30z"/>
+      <path d="M60 35h8c6 0 12 6 12 12s-6 12-12 12h-8v-6h8c3 0 6-3 6-6s-3-6-6-6h-8v-6z"/>
+      <path d="M20 15c0-6 4-8 4-12s-4-6-4-12" stroke="white" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M35 20c0-6 4-8 4-12s-4-6-4-12" stroke="white" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M50 15c0-6 4-8 4-12s-4-6-4-12" stroke="white" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </g>
+  </g>
+  <!-- Text -->
+  <text x="600" y="350" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="bold" fill="white">x402 Donate</text>
+  <text x="600" y="420" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" fill="#a1a1aa">Buy someone a coffee with crypto</text>
+  <!-- Powered by badge -->
+  <text x="600" y="550" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#f59e0b">Powered by x402</text>
+</svg>
