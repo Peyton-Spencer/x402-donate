@@ -166,9 +166,14 @@ export const Route = createFileRoute("/api/donate/$recipient/$network")({
 					10,
 				);
 
+				// Log all headers for debugging
 				console.log("=== Incoming POST request ===");
 				console.log("URL:", request.url);
 				console.log("Params:", { recipient, network, amountCents });
+				console.log("Headers:");
+				for (const [key, value] of request.headers.entries()) {
+					console.log(`  ${key}: ${value.substring(0, 100)}${value.length > 100 ? "..." : ""}`);
+				}
 
 				// Validate network
 				if (!NETWORK_CONFIG[network]) {
@@ -204,10 +209,7 @@ export const Route = createFileRoute("/api/donate/$recipient/$network")({
 					console.log("Decoding payment header...");
 					const paymentPayload = JSON.parse(atob(paymentHeader));
 
-					console.log(
-						"Received payment payload:",
-						JSON.stringify(paymentPayload, null, 2),
-					);
+					console.log("Received payment payload:", JSON.stringify(paymentPayload, null, 2));
 
 					// Build payment requirements (must match what was sent in 402)
 					const paymentRequirements = buildPaymentRequirements(
@@ -217,12 +219,8 @@ export const Route = createFileRoute("/api/donate/$recipient/$network")({
 						request.url,
 					);
 
-					const { FACILITATOR_URL, FACILITATOR_API_KEY } = getServerEnv();
-					console.log("Using facilitator URL:", FACILITATOR_URL);
-					console.log(
-						"Using facilitator API key:",
-						FACILITATOR_API_KEY ? "YES" : "NO",
-					);
+					const facilitatorUrl = getServerEnv().FACILITATOR_URL;
+					console.log("Using facilitator URL:", facilitatorUrl);
 
 					// Step 1: Verify the payment with the facilitator
 					const verifyRequestBody = {
@@ -231,22 +229,13 @@ export const Route = createFileRoute("/api/donate/$recipient/$network")({
 						paymentRequirements: paymentRequirements[0],
 					};
 					console.log("=== Calling /verify ===");
-					console.log(
-						"Request body:",
-						JSON.stringify(verifyRequestBody, null, 2),
-					);
+					console.log("Request body:", JSON.stringify(verifyRequestBody, null, 2));
 
-					const headers: HeadersInit = FACILITATOR_API_KEY
-						? {
-								"Content-Type": "application/json",
-								"X-API-KEY": FACILITATOR_API_KEY,
-							}
-						: {
-								"Content-Type": "application/json",
-							};
-					const verifyResponse = await fetch(`${FACILITATOR_URL}/verify`, {
+					const verifyResponse = await fetch(`${facilitatorUrl}/verify`, {
 						method: "POST",
-						headers,
+						headers: {
+							"Content-Type": "application/json",
+						},
 						body: JSON.stringify(verifyRequestBody),
 					});
 
@@ -284,14 +273,13 @@ export const Route = createFileRoute("/api/donate/$recipient/$network")({
 						paymentRequirements: paymentRequirements[0],
 					};
 					console.log("=== Calling /settle ===");
-					console.log(
-						"Request body:",
-						JSON.stringify(settleRequestBody, null, 2),
-					);
+					console.log("Request body:", JSON.stringify(settleRequestBody, null, 2));
 
-					const settleResponse = await fetch(`${FACILITATOR_URL}/settle`, {
+					const settleResponse = await fetch(`${facilitatorUrl}/settle`, {
 						method: "POST",
-						headers,
+						headers: {
+							"Content-Type": "application/json",
+						},
 						body: JSON.stringify(settleRequestBody),
 					});
 

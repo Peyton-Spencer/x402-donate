@@ -6,8 +6,7 @@ import { createServerOnlyFn } from "@tanstack/react-start";
  */
 export const getServerEnv = createServerOnlyFn(() => ({
 	FACILITATOR_URL:
-		process.env.FACILITATOR_URL ?? "https://cohort10-x402-go.vercel.app",
-	FACILITATOR_API_KEY: process.env.FACILITATOR_API_KEY,
+		process.env.FACILITATOR_URL ?? "https://x402-hackathon-test.vercel.app",
 }));
 
 /**
